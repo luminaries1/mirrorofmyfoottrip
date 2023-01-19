@@ -4,8 +4,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.app.myfoottrip.data.dto.Board
 import com.app.myfoottrip.data.dto.Travel
 import com.app.myfoottrip.data.repository.TravelRepository
+import com.app.myfoottrip.util.NetworkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -19,9 +21,8 @@ class TravelViewModel : ViewModel() {
         get() = _travelData
 
     //유저별 여정 조회 값
-    private val _travelUserData = MutableLiveData<ArrayList<Travel>>()
-    val travelUserData: LiveData<ArrayList<Travel>>
-        get() = _travelUserData
+    val travelUserData: LiveData<NetworkResult<ArrayList<Travel>>>
+        get() = travelRepository.travelListResponseLiveData
 
     //여정 기록 state
     private val _travelResponseStatus = MutableLiveData(false)
@@ -30,12 +31,8 @@ class TravelViewModel : ViewModel() {
 
     //유저별 여정 확인
     fun getUserTravel(userId : Int){
-        var travelData : ArrayList<Travel>
         viewModelScope.launch {
-            travelData = TravelRepository().getUserTravel(userId)
-            if(travelData.size > 0){
-                _travelUserData.postValue(travelData)
-            }
+            TravelRepository().getUserTravel(userId)
         }
     }
 

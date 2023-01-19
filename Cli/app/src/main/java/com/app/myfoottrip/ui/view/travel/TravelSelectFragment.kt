@@ -6,33 +6,31 @@ import android.view.View
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.app.myfoottrip.R
-import com.app.myfoottrip.data.dto.Place
 import com.app.myfoottrip.data.dto.Travel
 import com.app.myfoottrip.data.dto.viewmodel.TravelViewModel
 import com.app.myfoottrip.databinding.FragmentTravelSelectBinding
 import com.app.myfoottrip.ui.adapter.TravelAdapter
 import com.app.myfoottrip.ui.base.BaseFragment
+import com.app.myfoottrip.util.NetworkResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.util.*
-import kotlin.collections.ArrayList
 
+private const val TAG = "TravelSelectFragment_myfoottrip"
 class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
     FragmentTravelSelectBinding::bind, R.layout.fragment_travel_select
 ) {
     private var type = 0 // 0 : 여정 기록, 1 : 마이페이지, 2 : 게시글 작성
 
     private val travelViewModel by activityViewModels<TravelViewModel>()
-    private var boardList : ArrayList<Travel> = arrayListOf()
     private lateinit var travelAdapter: TravelAdapter
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        initialize()
         //type 받는 코드
         type = requireArguments().getInt("type")
         Log.d(TAG, "onViewCreated: type : $type")
+        initialize()
     }
 
     private fun initialize(){
@@ -52,7 +50,7 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
     }
 
     private fun initAdapter(){
-        travelAdapter = TravelAdapter(boardList, type)
+        travelAdapter = TravelAdapter(arrayListOf(), type)
         binding.rvTravel.adapter = travelAdapter
 
         travelAdapter.setItemClickListener(object : TravelAdapter.ItemClickListener{
@@ -82,50 +80,32 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
             }
         }
     }
+    
+    private fun initObseve(){
+        travelViewModel.travelUserData.observe(viewLifecycleOwner) {
+            when (it) {
+                is NetworkResult.Success -> {
+                    if(it.data != null){
+                        val boardList = it.data
+                        travelAdapter.setList(boardList)
+                        travelAdapter.notifyDataSetChanged()
+                    }
+                }
+                is NetworkResult.Error -> {
+                    Log.d(TAG, "userTravel 체크 Error: ${it.data}")
+                }
+                is NetworkResult.Loading -> {
+                    //TODO: 로딩바
+                }
+            }
+        }
+    }
 
 
     private fun setData(){ //TODO : DB에서 값 가져와서 넣기
         CoroutineScope(Dispatchers.IO).launch {
             travelViewModel.getUserTravel(1)
         }
-    }
-
-    private fun dumiSet(){
-        boardList.add(
-            Travel(
-                1,0, arrayListOf("서울", "부산"), Date(1234564),Date(12645648), arrayListOf()
-            ),
-        )
-        boardList.add(
-            Travel(
-                1,1, arrayListOf("서울", "부산"), Date(16548946),Date(23551651),arrayListOf()
-            ),
-        )
-        boardList.add(
-            Travel(
-                1,1, arrayListOf("서울", "부산"), Date(16548946),Date(23551651),arrayListOf()
-            ),
-        )
-        boardList.add(
-            Travel(
-                1,1, arrayListOf("서울", "부산"), Date(16548946),Date(23551651), arrayListOf()
-            ),
-        )
-        boardList.add(
-            Travel(
-                1,1, arrayListOf("서울", "부산"), Date(16548946),Date(23551651),arrayListOf()
-            ),
-        )
-        boardList.add(
-            Travel(
-                1,1, arrayListOf("서울", "부산"), Date(16548946),Date(23551651), arrayListOf()
-            ),
-        )
-        boardList.add(
-            Travel(
-                1,1, arrayListOf("서울", "부산"), Date(16548946),Date(23551651), arrayListOf()
-            ),
-        )
     }
 
     private fun changeSelected(position: Int){
