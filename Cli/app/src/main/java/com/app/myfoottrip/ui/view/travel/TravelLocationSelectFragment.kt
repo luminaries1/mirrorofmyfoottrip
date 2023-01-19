@@ -9,8 +9,10 @@ import android.view.View
 import android.view.View.OnTouchListener
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.app.myfoottrip.R
+import com.app.myfoottrip.data.dto.viewmodel.TravelViewModel
 import com.app.myfoottrip.databinding.FragmentTravelLocationSelectBinding
 import com.app.myfoottrip.ui.adapter.CategoryAdatper
 import com.app.myfoottrip.ui.base.BaseFragment
@@ -29,6 +31,7 @@ private const val TAG = "TravelLocationSelectFra_myfoottrip"
 class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBinding>(
     FragmentTravelLocationSelectBinding::bind, R.layout.fragment_travel_location_select
 ), OnMapReadyCallback {
+    private val travelViewModel by activityViewModels<TravelViewModel>()
     private lateinit var categoryAdapter: CategoryAdatper
     private var locationList : ArrayList<String> = arrayListOf() //지역 리스트
     private var selectedList : ArrayList<String> = arrayListOf() //선택된 리스트
@@ -98,6 +101,7 @@ class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBi
         binding.apply {
             fabStart.setOnClickListener {
                 //위치 기록 시작
+                travelViewModel.setLocationList(selectedList)
                 LocationConstants.startBackgroundService(requireContext())
                 showToast("위치 기록을 시작합니다.", ToastType.SUCCESS)
                 findNavController().navigate(R.id.action_travelLocationSelectFragment_to_travelLocationWriteFragment)

@@ -14,6 +14,9 @@ import kotlinx.coroutines.withContext
 
 class TravelViewModel : ViewModel() {
     private val travelRepository = TravelRepository()
+    
+    // 선택된 지역 리스트
+    private var locationList = arrayListOf<String>()
 
     //여정 조회 값
     private val _travelData = MutableLiveData<Travel>()
@@ -28,6 +31,10 @@ class TravelViewModel : ViewModel() {
     private val _travelResponseStatus = MutableLiveData(false)
     val travelResponseStatus: LiveData<Boolean>
         get() = _travelResponseStatus
+
+    fun setLocationList(list : ArrayList<String>){
+        locationList = list
+    }
 
     //유저별 여정 확인
     fun getUserTravel(userId : Int){
