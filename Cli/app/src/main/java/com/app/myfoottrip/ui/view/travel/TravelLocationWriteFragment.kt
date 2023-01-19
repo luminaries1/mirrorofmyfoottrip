@@ -1,33 +1,24 @@
 package com.app.myfoottrip.ui.view.travel
 
-import android.graphics.PointF
 import android.os.Bundle
 import android.util.Log
-import androidx.fragment.app.Fragment
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.app.myfoottrip.R
+import com.app.myfoottrip.data.dto.Location
 import com.app.myfoottrip.data.dto.Place
 import com.app.myfoottrip.data.dto.Travel
 import com.app.myfoottrip.data.dto.viewmodel.TravelViewModel
-import com.app.myfoottrip.data.model.dto.Location
-import com.app.myfoottrip.data.model.viewmodel.JoinViewModel
-import com.app.myfoottrip.data.repository.AppDatabase
 import com.app.myfoottrip.databinding.FragmentTravelLocationWriteBinding
 import com.app.myfoottrip.ui.base.BaseFragment
 import com.app.myfoottrip.util.LocationConstants
-import com.naver.maps.geometry.LatLng
 import com.naver.maps.map.*
 import com.naver.maps.map.util.FusedLocationSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.math.ln
 
 class TravelLocationWriteFragment : BaseFragment<FragmentTravelLocationWriteBinding>(
     FragmentTravelLocationWriteBinding::bind, R.layout.fragment_travel_location_write

@@ -1,33 +1,28 @@
 package com.app.myfoottrip.data.model.viewmodel
 
 
-import android.util.Log
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.airbnb.lottie.L
 import com.app.myfoottrip.data.dto.Email
 import com.app.myfoottrip.data.dto.Join
-import com.app.myfoottrip.data.dto.JoinTest
+import com.app.myfoottrip.data.dto.Token
 import com.app.myfoottrip.data.dto.User
 import com.app.myfoottrip.data.repository.UserRepository
 import com.app.myfoottrip.util.NetworkResult
-import com.navercorp.nid.log.NidLog.init
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 private const val TAG = "싸피"
 
 class JoinViewModel : ViewModel() {
     private val userRepository = UserRepository()
-
-    // 이메일 사용 여부 체크 값 livedata
-    private val _isUsedEmail = MutableLiveData<Boolean>()
-    val isUsedEmail: LiveData<Boolean>
-        get() = _isUsedEmail
 
     // 휴대폰 인증 상태 체크 LiveData
     private val _phoneNumberValidation = MutableLiveData<Boolean>()
@@ -46,22 +41,23 @@ class JoinViewModel : ViewModel() {
         get() = _isAllCheckedCount
 
     // 이메일 체크 상태
-    private val _emailCheckSuccess = MutableLiveData<Boolean>(false)
+    private val _emailCheckSuccess = MutableLiveData(false)
     val emailCheckSuccess: LiveData<Boolean>
         get() = _emailCheckSuccess
 
-    // 회원가입 하면서 생성되는 유저 정보를 viewModel에 저장
-    private val _joinUserData = Join("", "")
-    val joinUserData: Join
-        get() = _joinUserData
+    // 회원가입 하면서 생성되는 전체 유저 정보 LiveData
+    private val _wholeJoinUserData = Join("", "")
+    val wholeJoinUserData: Join
+        get() = _wholeJoinUserData
 
     private val _joinResponseStatus = MutableLiveData(false)
     val joinResponseStatus: LiveData<Boolean>
         get() = _joinResponseStatus
 
-    private val _joinSuccessUserData = MutableLiveData<JoinTest>()
-    val joinSuccessUserData: LiveData<JoinTest>
+    private val _joinSuccessUserData = MutableLiveData<User>()
+    val joinSuccessUserData: LiveData<User>
         get() = _joinSuccessUserData
+
 
     // 이메일 중복 체크 변경 테스트 LiveData
     val userResponseLiveData: LiveData<NetworkResult<Boolean>>
@@ -81,13 +77,49 @@ class JoinViewModel : ViewModel() {
     val confirmPassword: LiveData<String>
         get() = _confirmPassword
 
+    // 회원가입 Response 값 responseLiveData
+    val joinResponseLiveData: LiveData<NetworkResult<Token>>
+        get() = userRepository.userJoinResponseLiveData
 
-    // 이메일 중복 체크
+    // 유저 이미지를 서버에 보내기 위해서 값을 가지고 있는 LiveData
+    private val _userProfileImageMultipartBody = MutableLiveData<MultipartBody.Part>()
+    val userProfileImageMultipartBody: LiveData<MultipartBody.Part>
+        get() = _userProfileImageMultipartBody
+
+    // 유저 이미지를 관리하는 LiveData
+    private val _userProfileImage = MutableLiveData<Uri>()
+    val userProfileImage: LiveData<Uri>
+        get() = _userProfileImage
+
+    // 이메일 중복 체크 통신
     fun emailUsedCheck(emailId: Email) {
         viewModelScope.launch {
             userRepository.checkUsedEmailId(emailId)
         }
     } // End of emailUsedCheck
+
+    // 사용자 회원가입 통신
+    fun userJoin() {
+        var requestHashMap: HashMap<String, RequestBody> = HashMap()
+
+        requestHashMap["email"] =
+            _wholeJoinUserData.email.toRequestBody("multipart/form-data".toMediaTypeOrNull())
+        requestHashMap["password"] =
+            _wholeJoinUserData.password.toRequestBody("multipart/form-data".toMediaTypeOrNull())
+        requestHashMap["username"] =
+            _wholeJoinUserData.username.toRequestBody("multipart/form-data".toMediaTypeOrNull())
+        requestHashMap["nickname"] =
+            _wholeJoinUserData.nickname.toRequestBody("multipart/form-data".toMediaTypeOrNull())
+        requestHashMap["age"] =
+            _wholeJoinUserData.age.toRequestBody("multipart/form-data".toMediaTypeOrNull())
+
+        viewModelScope.launch {
+            userRepository.userJoin(
+                _userProfileImageMultipartBody.value!!,
+                requestHashMap
+            )
+        }
+    } // End of userJoin
 
     // 이메일 인증 문자 체크
     fun emailValidateCheck(emailValidateData: Email) {
@@ -98,7 +130,7 @@ class JoinViewModel : ViewModel() {
 
     // 동의 체크한 목록 개수값 변경
     fun setCheckedCountValue(count: Int) {
-        _isAllCheckedCount.value = 0
+        _isAllCheckedCount.value = 0 // 0으로 초기화하고 난 후 값을 변경
         _isAllCheckedCount.value = count
     } // End of setCheckedCountValue
 
@@ -106,38 +138,20 @@ class JoinViewModel : ViewModel() {
     fun changeAgeState(index: Int) {
         val tempList = mutableListOf(false, false, false, false, false, false)
         tempList[index] = true
-
         _ageState.value = tempList
     } // End of changeAgeState
 
-    // 사용자 회원가입 시작 (retrofit 통신)
-    fun userJoin() {
-        var joinResultUserData: JoinTest
 
-        viewModelScope.launch {
-            joinResultUserData = UserRepository().joinUser(joinUserData)
+    fun setUserImageUri(imageUri: Uri) {
+        _userProfileImage.value = imageUri
+    } // End of setUserImageUri
 
-            Log.d(TAG, "userJoin1: $joinResultUserData")
-            withContext(Dispatchers.Main) {
-                Log.d(TAG, "usaerJoin2: $joinResultUserData")
-                if (joinResultUserData.user == null) {
-                    _joinResponseStatus.value = false
-                }
-
-                if (joinResultUserData.user != null) {
-                    _joinSuccessUserData.value = joinResultUserData
-                    _joinResponseStatus.value = true
-                }
-            }
-        }
-
-        Log.d(TAG, "userJoin3 : 비동기 처리 테스트")
-    } // End of userJoin
+    fun setUserImageUriToMultipart(imageUri: MultipartBody.Part) {
+        _userProfileImageMultipartBody.value = imageUri
+    } // End of setUserImageUri
 
     fun setPwLiveData(pwOrigin: String, pwConfirm: String) {
         _originPassword.value = pwOrigin
         _confirmPassword.value = pwConfirm
     } // End of setOriginPw
-
-
 } // End of JoinViewModel
