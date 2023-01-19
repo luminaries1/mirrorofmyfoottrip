@@ -31,6 +31,8 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
         type = requireArguments().getInt("type")
         Log.d(TAG, "onViewCreated: type : $type")
         initialize()
+
+        initObseve()
     }
 
     private fun initialize(){
@@ -47,6 +49,7 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
         setData()
         initAdapter()
         setListener()
+
     }
 
     private fun initAdapter(){
@@ -83,9 +86,12 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
     
     private fun initObseve(){
         travelViewModel.travelUserData.observe(viewLifecycleOwner) {
+            Log.d(TAG, "initObseve: ")
             when (it) {
                 is NetworkResult.Success -> {
+                    Log.d(TAG, "initObseve: Success=====")
                     if(it.data != null){
+                        Log.d(TAG, "initObseve: ${it.data}")
                         val boardList = it.data
                         travelAdapter.setList(boardList)
                         travelAdapter.notifyDataSetChanged()

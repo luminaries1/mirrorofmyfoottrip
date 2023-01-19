@@ -1,5 +1,6 @@
 package com.app.myfoottrip.data.dto.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -12,11 +13,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private const val TAG = "TravelViewModel_myfoottrip"
 class TravelViewModel : ViewModel() {
     private val travelRepository = TravelRepository()
     
     // 선택된 지역 리스트
     private var locationList = arrayListOf<String>()
+    var selectedtravel : Travel? = null
 
     //여정 조회 값
     private val _travelData = MutableLiveData<Travel>()
@@ -37,7 +40,7 @@ class TravelViewModel : ViewModel() {
     }
 
     //유저별 여정 확인
-    fun getUserTravel(userId : Int){
+    suspend fun getUserTravel(userId : Int){
         viewModelScope.launch {
             TravelRepository().getUserTravel(userId)
         }

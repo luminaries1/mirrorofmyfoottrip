@@ -26,16 +26,18 @@ class TravelRepository {
 
     suspend fun getUserTravel(userId : Int){
         var response = travelService.getUserTravel(userId)
+        // Log.d(TAG, "getUserTravel: ${response.body()}")
 
         // 처음은 Loading 상태로 지정
-        _travelListResponseLiveData.postValue(NetworkResult.Loading())
+        _travelListResponseLiveData.value = (NetworkResult.Loading())
 
         if (response.isSuccessful && response.body() != null) {
-            _travelListResponseLiveData.postValue(NetworkResult.Success(response.body()!!))
+            Log.d(TAG, "이거 나옴?: ${response.body()!!}")
+            _travelListResponseLiveData.value = (NetworkResult.Success(response.body()!!))
         } else if (response.errorBody() != null) {
-            _travelListResponseLiveData.postValue(NetworkResult.Error(response.errorBody()!!.string()))
+            _travelListResponseLiveData.value = (NetworkResult.Error(response.errorBody()!!.string()))
         } else {
-            _travelListResponseLiveData.postValue(NetworkResult.Error(response.headers().toString()))
+            _travelListResponseLiveData.value = (NetworkResult.Error(response.headers().toString()))
         }
     }
     
