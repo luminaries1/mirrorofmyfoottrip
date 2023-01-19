@@ -18,10 +18,26 @@ class TravelViewModel : ViewModel() {
     val travelData: LiveData<Travel>
         get() = _travelData
 
+    //유저별 여정 조회 값
+    private val _travelUserData = MutableLiveData<ArrayList<Travel>>()
+    val travelUserData: LiveData<ArrayList<Travel>>
+        get() = _travelUserData
+
     //여정 기록 state
     private val _travelResponseStatus = MutableLiveData(false)
     val travelResponseStatus: LiveData<Boolean>
         get() = _travelResponseStatus
+
+    //유저별 여정 확인
+    fun getUserTravel(userId : Int){
+        var travelData : ArrayList<Travel>
+        viewModelScope.launch {
+            travelData = TravelRepository().getUserTravel(userId)
+            if(travelData.size > 0){
+                _travelUserData.postValue(travelData)
+            }
+        }
+    }
 
     //여정 조회
     fun getTravel(travelId : Int){

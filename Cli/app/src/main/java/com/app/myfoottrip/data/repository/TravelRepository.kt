@@ -10,7 +10,7 @@ import com.app.myfoottrip.util.NetworkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private const val TAG = "TravelRepository_areum"
+private const val TAG = "TravelRepository_싸피"
 class TravelRepository {
     private val travelApi = Application.retrofit.create(TravelApi::class.java)
 
@@ -18,6 +18,24 @@ class TravelRepository {
     val travelResponseLiveData: LiveData<NetworkResult<Boolean>>
         get() = _travelResponseLiveData
 
+    suspend fun getUserTravel(userId : Int) : ArrayList<Travel>{
+        var result = arrayListOf<Travel>()
+        withContext(Dispatchers.IO){
+            try {
+                val response = travelApi.getUserTravel(userId)
+                if(response.isSuccessful){
+                    result = response.body() as ArrayList<Travel>
+                } else {
+                    Log.d(TAG, "getTravel: response 실패 ${response.errorBody().toString()}")
+                }
+            }catch (e : Exception){
+                Log.d(TAG, "getTravel: $e")
+            }
+        }
+
+        return result
+    }
+    
     //여정 조회
     suspend fun getTravel(travelId : Int) : Travel?{
         var result: Travel? = null

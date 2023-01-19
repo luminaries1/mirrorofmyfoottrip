@@ -3,12 +3,18 @@ package com.app.myfoottrip.ui.view.travel
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.app.myfoottrip.R
+import com.app.myfoottrip.data.dto.Place
 import com.app.myfoottrip.data.dto.Travel
+import com.app.myfoottrip.data.dto.viewmodel.TravelViewModel
 import com.app.myfoottrip.databinding.FragmentTravelSelectBinding
 import com.app.myfoottrip.ui.adapter.TravelAdapter
 import com.app.myfoottrip.ui.base.BaseFragment
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -17,6 +23,7 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
 ) {
     private var type = 0 // 0 : 여정 기록, 1 : 마이페이지, 2 : 게시글 작성
 
+    private val travelViewModel by activityViewModels<TravelViewModel>()
     private var boardList : ArrayList<Travel> = arrayListOf()
     private lateinit var travelAdapter: TravelAdapter
 
@@ -39,7 +46,7 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
         }else{ //게시글
 
         }
-        dumiSet()
+        setData()
         initAdapter()
         setListener()
     }
@@ -73,6 +80,13 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
                 //TODO : select 된 상태이면 -> 하는거
                 findNavController().navigate(R.id.action_travelSelectFragment_to_travelLocationSelectFragment)
             }
+        }
+    }
+
+
+    private fun setData(){ //TODO : DB에서 값 가져와서 넣기
+        CoroutineScope(Dispatchers.IO).launch {
+            travelViewModel.getUserTravel(1)
         }
     }
 
