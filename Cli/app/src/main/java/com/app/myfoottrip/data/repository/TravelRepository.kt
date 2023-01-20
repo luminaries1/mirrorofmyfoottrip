@@ -22,7 +22,10 @@ class TravelRepository {
     //유저 여정 값
     private val _travelListResponseLiveData = MutableLiveData<NetworkResult<ArrayList<Travel>>>()
     val travelListResponseLiveData: LiveData<NetworkResult<ArrayList<Travel>>>
-        get() = _travelListResponseLiveData
+        get() {
+            Log.d(TAG, "travellist : $_travelListResponseLiveData")
+            return _travelListResponseLiveData
+        }
 
     suspend fun getUserTravel(userId : Int){
         var response = travelService.getUserTravel(userId)
@@ -33,7 +36,13 @@ class TravelRepository {
 
         if (response.isSuccessful && response.body() != null) {
             Log.d(TAG, "이거 나옴?: ${response.body()!!}")
-            _travelListResponseLiveData.value = (NetworkResult.Success(response.body()!!))
+            val list : ArrayList<Travel> = arrayListOf()
+            response.body()!!.forEach{
+                Log.d(TAG, "travel : ${it.location}")
+                list.add(it as Travel)
+            }
+            Log.d(TAG, "getUserTravel: LIST : ${list}")
+            _travelListResponseLiveData.value = (NetworkResult.Success(list))
         } else if (response.errorBody() != null) {
             _travelListResponseLiveData.value = (NetworkResult.Error(response.errorBody()!!.string()))
         } else {
