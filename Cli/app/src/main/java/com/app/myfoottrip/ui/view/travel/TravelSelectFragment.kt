@@ -1,5 +1,6 @@
 package com.app.myfoottrip.ui.view.travel
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -16,7 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-private const val TAG = "TravelSelectFragment_myfoottrip"
+private const val TAG = "TravelSelectFragment_싸피"
 class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
     FragmentTravelSelectBinding::bind, R.layout.fragment_travel_select
 ) {
@@ -31,11 +32,11 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
         type = requireArguments().getInt("type")
         Log.d(TAG, "onViewCreated: type : $type")
         initialize()
-
-        initObseve()
     }
 
     private fun initialize(){
+        initObseve()
+        setData()
         if(type == 0){ //여정 선택 부분
             binding.tvTravelTitle.text = "여정을 선택해주세요"
             binding.btnSave.visibility = View.VISIBLE
@@ -46,7 +47,6 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
         }else{ //게시글
 
         }
-        setData()
         initAdapter()
         setListener()
 
@@ -75,7 +75,9 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
     private fun setListener(){
         binding.apply {
             ivBack.setOnClickListener{
-                findNavController().popBackStack()
+                travelViewModel.getUserData()
+//                Log.d(TAG, "data: ${travelViewModel.travelUserData.value} ")
+//                findNavController().popBackStack()
             }
             btnSave.setOnClickListener{
                 //TODO : select 된 상태이면 -> 하는거

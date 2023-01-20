@@ -39,8 +39,12 @@ class TravelViewModel : ViewModel() {
         locationList = list
     }
 
+    fun getUserData(){
+        Log.d(TAG, "viewModel : ${travelRepository.travelListResponseLiveData.value}")
+    }
+
     //유저별 여정 확인
-    suspend fun getUserTravel(userId : Int){
+     fun getUserTravel(userId : Int){
         viewModelScope.launch {
             TravelRepository().getUserTravel(userId)
         }

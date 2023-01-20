@@ -22,17 +22,14 @@ class TravelRepository {
     //유저 여정 값
     private val _travelListResponseLiveData = MutableLiveData<NetworkResult<ArrayList<Travel>>>()
     val travelListResponseLiveData: LiveData<NetworkResult<ArrayList<Travel>>>
-        get() {
-            Log.d(TAG, "travellist : $_travelListResponseLiveData")
-            return _travelListResponseLiveData
-        }
+        get() = _travelListResponseLiveData
 
     suspend fun getUserTravel(userId : Int){
         var response = travelService.getUserTravel(userId)
-        // Log.d(TAG, "getUserTravel: ${response.body()}")
+         Log.d(TAG, "response: ${response}")
 
         // 처음은 Loading 상태로 지정
-        _travelListResponseLiveData.value = (NetworkResult.Loading())
+        _travelListResponseLiveData.postValue(NetworkResult.Loading())
 
         if (response.isSuccessful && response.body() != null) {
             Log.d(TAG, "이거 나옴?: ${response.body()!!}")
@@ -42,11 +39,12 @@ class TravelRepository {
                 list.add(it as Travel)
             }
             Log.d(TAG, "getUserTravel: LIST : ${list}")
-            _travelListResponseLiveData.value = (NetworkResult.Success(list))
+            _travelListResponseLiveData.postValue(NetworkResult.Success(list))
+            Log.d(TAG, "내부 데이터: ${_travelListResponseLiveData.value?.data}")
         } else if (response.errorBody() != null) {
-            _travelListResponseLiveData.value = (NetworkResult.Error(response.errorBody()!!.string()))
+            _travelListResponseLiveData.postValue(NetworkResult.Error(response.errorBody()!!.string()))
         } else {
-            _travelListResponseLiveData.value = (NetworkResult.Error(response.headers().toString()))
+            _travelListResponseLiveData.postValue(NetworkResult.Error(response.headers().toString()))
         }
     }
     
