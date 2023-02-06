@@ -13,9 +13,11 @@ from rest_framework.decorators import api_view
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import serializers
 
-from .serializers import EmailUniqueCheckSerializer, PhoneUniqueCheckSerializer, CustomUserDetailSerializer, JoinSerializer, ImageTestSerializer, TestUserDetailSerializer
+from .serializers import EmailUniqueCheckSerializer, PhoneUniqueCheckSerializer, CustomUserDetailSerializer, JoinSerializer, AllUserDetailSerializer, FirebaseSerializer, CustomTokenBlacklistSerializer, CustomRegisterSerializer
 
-from .models import EmailValidateModel, ImageTest
+from .models import EmailValidateModel, FireBase
+
+from rest_framework_simplejwt.views import TokenBlacklistView
 
 
 # @extend_schema(tags=['registration'], request=PhoneUniqueCheckSerializer, responses=bool, summary='폰 넘버 중복 체크')
@@ -68,7 +70,7 @@ def validate_email(request):
     else:
         return HttpResponse(False)
 
-
+from dj_rest_auth.registration.views import RegisterView
 # 소셜 로그인 시 유저 정보 조회 후 토큰 발급
 @extend_schema(tags=['login'], request=inline_serializer(
     name="InlineFormSerializer",
@@ -85,7 +87,8 @@ def validate_email(request):
 @csrf_exempt
 def social_login(request, social_page):
     # TEST CODE
-    # https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=FL_dHs6b8BOH36DPExe3&redirect_uri=http://127.0.0.1:8000/accounts/social_login/1/
+    # https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=FL_dHs6b8BOH36DPExe3&redirect_uri=http://127.0.0.1:8000/accounts/social_login/naver/
+    # print(request)
     # print(request.GET.get('code'))
     # usercode = request.GET.get('code')
     # userkey = requests.get(url=f'https://nid.naver.com/oauth2.0/token?grant_type=authorization_code&client_id=FL_dHs6b8BOH36DPExe3&client_secret=p_IuEJYQOc&code={usercode}&state=9kgsGTfH4j7IyAkg', )
@@ -99,32 +102,48 @@ def social_login(request, social_page):
 
     # 네이버의 경우
     if social_page == "naver":
-        usertoken = request.POST.get("token")
+        usertoken = request.data["token"]
         userdata = requests.get(url="https://openapi.naver.com/v1/nid/me",
                                 headers={"Authorization": f"Bearer {usertoken}"})
 
         useremail = json.loads(userdata.content.decode(
             'utf-8')).get('response').get('email')
     # 카카오의 경우
-    elif social_page == "kakao":
+    if social_page == "kakao":
         usertoken = request.POST.get("token")
         userdata = requests.get(url="https://kapi.kakao.com/v2/user/me",
                                 headers={"Authorization": f"Bearer {usertoken}"})
+        
     # 구글의 경우
     elif social_page == "google":
         usertoken = request.POST.get("token")
         userdata = requests.get(url="www.googleapis.com/drive/v2/files",
                                 headers={"Authorization": f"Bearer {usertoken}"})
-    else:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+    # else:
+    #     return Response(status=status.HTTP_404_NOT_FOUND)
 
     # 유저모델 호출
     User = get_user_model()
     try:
-        user = get_object_or_404(User, email=useremail)
+        user = User.objects.get(email=useremail)
     except:
-        return HttpResponse(False)
+        vcode = get_random_string(length=8)
+        # serializer = CustomRegisterSerializer( data={'email': f'{useremail}', 'password': '1q2w3e4r!@#$%', 'nickname': f'{social_page}_{vcode}', 'age': 10})
+        # if serializer.is_valid(raise_exception=True):
+        #     serializer.save(request={'data': {'email': f'{useremail}', 'password': '1q2w3e4r!@#$%', 'nickname': f'{social_page}_{vcode}', 'age': 10}})
+        # user = User.objects.get(email=useremail)
+        # class ReUser():
+        #     def __init__(self, data):
+        #         self.data = data
+        #     def get_data(self):
+        #         return self.data
+        # ReUser.data = {'email': f'{useremail}', 'password': '1q2w3e4r!@#$%', 'nickname': f'{social_page}_{vcode}', 'age': 10}
+        # RegisterView.create(self=RegisterView, request=ReUser)
+        # 임시로 때려박은 유저...
+        user = User.objects.create(email=f'{useremail}', password='1q2w3e4r!@#$%', nickname=f'{social_page}_{vcode}', age = 10)
+        
     token = get_tokens_for_user(user)
+    print(token)
     return JsonResponse(token, status=status.HTTP_200_OK)
 
 # 토큰 생성 함수
@@ -140,29 +159,30 @@ def get_tokens_for_user(user):
 
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
+
 @csrf_exempt
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def join_views(request):
     user = request.user
-    serializer = TestUserDetailSerializer(user)
+    serializer = AllUserDetailSerializer(user, context={"request": request})
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@csrf_exempt
+@api_view(['POST', 'PUT'])
+@permission_classes([IsAuthenticated])
+def f_token_save_views(request):
+    if request.method == 'POST':
+        if len(FireBase.objects.filter(fcmToken = request.data['firebaseToken'], user=request.user)) == 0:
+            serializer = FirebaseSerializer(data = request.data)
 
-
-# @api_view(['POST', 'GET'])
-# def image_test(request):
-#     print(request.data)
-#     # ImageTest.objects.create(profileImg = request.FILES)
-#     if request.method == "POST":
-#         serializer = ImageTestSerializer(data = request.data)
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
-#         else:
-#             return Response(serializer.errors, status = status.HTTP_400_BAD_REQUEST)
-#     else:
-#         img = get_list_or_404(ImageTest)
-#         serializer = ImageTestSerializer(img, many=True)
-#         return Response(serializer.data)
+            if serializer.is_valid(raise_exception=True):
+                serializer.save(user=request.user)
+                return Response(data=serializer.data['firebaseToken'], status=status.HTTP_200_OK)
+        else:
+            return Response(data=request.data['firebaseToken'], status=status.HTTP_200_OK)
+    elif request.method == 'PUT':
+        FireBase.objects.filter(fcmToken = request.data['firebaseToken']).delete()
+        return Response(data=request.data['firebaseToken'], status=status.HTTP_200_OK)
+        

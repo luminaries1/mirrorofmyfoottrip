@@ -21,29 +21,31 @@ class Board(models.Model):
     content = models.TextField(max_length=300)
     imageList = models.JSONField()
     travel = models.ForeignKey(Travel, on_delete=models.CASCADE, related_name='board')
-    likeList = models.ManyToManyField(User, related_name='myLikeBoard')
+    likeList = models.ManyToManyField(User, related_name='myLikeBoard', blank= True)
 
 class Place(models.Model):
     travel = models.ForeignKey(Travel, on_delete=models.CASCADE, related_name='placeList')
     placeName = models.CharField(max_length = 20, default="대구")
-    saveDate = models.DateTimeField(auto_now=False, auto_now_add=True)
+    saveDate = models.DateTimeField(auto_now=False, auto_now_add=False)
     memo = models.CharField(max_length=20)
-    placeImgList = models.JSONField()
+    placeImgList = models.JSONField(default=list)
     latitude = models.FloatField(default=0.0)
     longitude = models.FloatField(default=0.0)
-    address = models.CharField(max_length=40, default='')
-
+    address = models.CharField(max_length=255, default='')
 
 class Comment(models.Model):
     board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='commentList')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="commentList")
-    nickname = models.CharField(max_length = 30)
-    content = models.TextField(max_length=34)
+    content = models.TextField(max_length=50)
     write_date = models.DateTimeField(auto_now_add=True)
-
-
+    message = models.CharField(max_length= 50, default='')
 
 class Like(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     board = models.ForeignKey(Board, on_delete=models.CASCADE)
 
+class Notification(models.Model):
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='creatorList')
+    to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='toList')
+    msg = models.CharField(_("message"), max_length=100)
+    notification_type = models.IntegerField(default=0)

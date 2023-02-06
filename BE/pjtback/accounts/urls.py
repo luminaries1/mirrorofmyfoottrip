@@ -9,6 +9,6 @@ urlpatterns = [
     path('emailcheck/', views.filtering_email),
     path('emailvalidate/', views.validate_email),
     path('social_login/<str:social_page>/', views.social_login),
-    # path('join/<int:user_pk>/', views.join_views),
-    # path('image_test/', views.image_test),
+    path('userdetail/', UserDetailsView.as_view()),
+    path('firebase_save/', views.f_token_save_views),
 ]

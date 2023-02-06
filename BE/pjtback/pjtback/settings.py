@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
 
 
     'dj_rest_auth',
@@ -118,10 +119,10 @@ REST_FRAMEWORK = {
 
 # JWT 토큰
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(seconds=10),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=3),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=180),
     'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': False,
+    'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
 
     'ALGORITHM': 'HS256',
@@ -149,6 +150,7 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
     
     "TOKEN_REFRESH_SERIALIZER": "accounts.serializers.CustomTokenRefreshSerializer",
+    "TOKEN_BLACKLIST_SERIALIZER": "accounts.serializers.CustomTokenBlacklistSerializer",
 }
 
 MIDDLEWARE = [
@@ -188,6 +190,17 @@ WSGI_APPLICATION = 'pjtback.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'django_mobile',
+#         'USER': 'root',
+#         'PASSWORD': 'sangjun1324',
+#         'HOST': 'db',
+#         'PORT': '3306'
+#     }
+# }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -195,7 +208,8 @@ DATABASES = {
         'USER': 'root',
         'PASSWORD': 'sangjun1324',
         'HOST': 'localhost',
-        'PORT': '3306'
+        'PORT': '3306',
+        "OPTIONS": {"charset": "utf8mb4"}
     }
 }
 
@@ -224,7 +238,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'ko-kr'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -280,8 +294,11 @@ REST_AUTH_SERIALIZERS = {
 REST_USE_JWT = True
 
 # 스태틱 파일 BASEROOT
-# STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'static'
+# STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+# STATICFILES_DIRS = [
+#     BASE_DIR / 'static',
+# ]
 
 # django graphene
 GRAPHENE = {
@@ -313,3 +330,11 @@ EMAIL_HOST_USER = 'tkdwns1324@gmail.com'
 EMAIL_HOST_PASSWORD = 'jwlkzbqydsdtjhic'
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+import firebase_admin
+from firebase_admin import credentials
+
+cred_path = os.path.join(BASE_DIR, "serviceAccountKey.json")
+cred = credentials.Certificate(cred_path)
+firebase_admin.initialize_app(cred)

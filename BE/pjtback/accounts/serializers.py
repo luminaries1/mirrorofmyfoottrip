@@ -13,7 +13,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth import get_user_model
-from .models import User, ImageTest
+from .models import User, FireBase
 
 from community.serializers import PlaceSerializer, BoardListSerializer, TravelSerializer, CommentSerializer
 
@@ -42,7 +42,7 @@ class CustomRegisterSerializer(RegisterSerializer):
 
     def get_cleaned_data(self):
         data = super().get_cleaned_data()
-        data['profileImg'] = self.validated_data.get('profileImg', 'default_image.jpg')
+        data['profileImg'] = self.validated_data.get('profileImg', '')
         data['phone_number'] = self.validated_data.get('phone_number', '')
         data['naver'] = self.validated_data.get('naver', '')
         data['google'] = self.validated_data.get('google', '')
@@ -81,19 +81,20 @@ class CustomUserDetailSerializer(UserDetailsSerializer):
     pw = serializers.CharField(source="password", read_only=True)
     name = serializers.CharField(source="username", required=False)
     age = serializers.CharField()
+    
 
     class Meta(UserDetailsSerializer.Meta):
         fields = ('email', 'pw', 'name', 'nickname',
-                  'profileImg', 'age', 'kakao', 'naver', 'google')
+                  'profileImg', 'age', 'kakao', 'naver', 'google',)
         read_only_fields = ('email', 'pw',)
 
 
 class JoinSerializer(serializers.ModelSerializer):
-    
+    profile_image = serializers.ImageField(source='profileImg', use_url = True)
     class Meta:
         model = User
         fields = ('email', 'password', 'username', 'nickname',
-                  'profileImg', 'age', 'kakao', 'naver', 'google')
+                  'profile_image', 'age', 'kakao', 'naver', 'google')
         read_only_fields = ('email', 'password',)
 
 
@@ -145,15 +146,9 @@ class UserForignSerializer(serializers.ModelSerializer):
         model = User
         fields = ('travel', 'myLikeBoard', 'writeBoard',)
 
-class ImageTestSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = ImageTest
-        fields = "__all__"
-
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.settings import api_settings
-from rest_framework_simplejwt.serializers import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken
 class CustomTokenRefreshSerializer(TokenRefreshSerializer):
     refresh = ""
     refresh_token = serializers.CharField()
@@ -184,7 +179,7 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
         return data
 
 # 유저 디테일 시리얼라이저
-class TestUserDetailSerializer(UserDetailsSerializer):
+class AllUserDetailSerializer(UserDetailsSerializer):
     uid = serializers.IntegerField(source="id", read_only=True)
     join = JoinSerializer(source="*")
     travel = TravelSerializer(many=True, read_only=True)
@@ -195,3 +190,28 @@ class TestUserDetailSerializer(UserDetailsSerializer):
     class Meta(UserDetailsSerializer.Meta):
         fields = ('uid', 'join', 'travel', 'myLikeBoard', 'commentList', 'writeBoard')
         read_only_fields = ()
+
+# 블랙리스트 시리얼라이저
+class CustomTokenBlacklistSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField()
+    refresh_token_class = RefreshToken
+
+    def validate(self, attrs):
+        refresh = self.refresh_token_class(attrs["refresh_token"])
+        try:
+            refresh.blacklist()
+        except AttributeError:
+            pass
+        return True
+    def post(self):
+        return 'ok'
+
+
+
+# firebase 토큰 시리얼라이저
+class FirebaseSerializer(UserDetailsSerializer):
+    firebaseToken = serializers.CharField(source = 'fcmToken', required= True)
+
+    class Meta:
+        model=FireBase
+        fields = ('__all__')

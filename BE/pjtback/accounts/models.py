@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser, PermissionsMixin
 from imagekit.models import ProcessedImageField
 from imagekit.processors import ResizeToFill
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 
 # Create your models here.
 
@@ -26,11 +27,6 @@ class EmailValidateModel(models.Model):
     email = models.EmailField()
     validateNumber = models.CharField(max_length=10)
 
-class ImageTest(models.Model):
-    profileImg = ProcessedImageField(
-        blank=True,
-        upload_to='profile_image/accounts/%Y/%m',
-        processors=[ResizeToFill(300, 300)],
-        format='JPEG',
-        options={'quality': 70},
-    )
+class FireBase(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)
+    fcmToken = models.CharField("FCM Token", blank=True, max_length=500, null=True)
