@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MyFootTrip</string>
+    <string name="app_name">마이풋트립</string>
 
     <!-- 회원 가입 파트 string 상수값 Start -->
     <string name="email_join_title">이메일을 입력해주세요</string>
@@ -57,5 +57,14 @@
         <item>최신순</item>
         <item>좋아요순</item>
     </string-array>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+
+
+    <!-- 여행 파트 -->
+    <string name="save_button_text">저장</string>
+    <string name="plz_travel_select_button_text">여행을 선택해주세요.</string>
+    <string name="make_new_travel_button_text">+ 여행 새로 만들기</string>
+    <string name="select_travel_title">여행 선택하기</string>
 
 </resources>

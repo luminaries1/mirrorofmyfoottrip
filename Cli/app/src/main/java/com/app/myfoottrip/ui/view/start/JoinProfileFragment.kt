@@ -1,24 +1,25 @@
 package com.app.myfoottrip.ui.view.start
 
 import android.app.Activity
-import android.app.Activity.*
+import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.MediaStore
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.widget.AppCompatButton
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.Navigation
+import androidx.navigation.fragment.findNavController
 import com.app.myfoottrip.R
-import com.app.myfoottrip.data.model.viewmodel.JoinViewModel
+import com.app.myfoottrip.data.viewmodel.JoinViewModel
 import com.app.myfoottrip.databinding.FragmentJoinProfileBinding
 import com.app.myfoottrip.util.ChangeMultipartUtil
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -31,6 +32,7 @@ private const val TAG = "JoinProfileFragment_싸피"
 class JoinProfileFragment : Fragment() {
     private lateinit var mContext: Context
     private lateinit var binding: FragmentJoinProfileBinding
+    private lateinit var joinBackButtonCustomView: JoinBackButtonCustomView
     private val joinViewModel by activityViewModels<JoinViewModel>()
 
     override fun onAttach(context: Context) {
@@ -48,14 +50,17 @@ class JoinProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-//        binding.joinProfileImagePlusButton.setOnClickListener {
-//            getImage()
-//        }
-
         // 프로필 이미지 추가 버튼 클릭
         binding.joinProfileImagePlusButton.setOnClickListener {
             selectGallery()
         }
+
+        joinBackButtonCustomView = binding.joinBackButtonCustomview
+        joinBackButtonCustomView.findViewById<AppCompatButton>(R.id.custom_back_button_appcompatbutton)
+            .setOnClickListener {
+                findNavController().popBackStack()
+            }
+
 
         // 연령대 선택 프래그먼트로 이동
         binding.joinNextButton.setOnClickListener {
@@ -71,7 +76,6 @@ class JoinProfileFragment : Fragment() {
 
         // 회원가입 프로필 이미지 옵저버
         userProfileImageObserver()
-
     } // End of onViewCreated
 
     private fun selectGallery() {
@@ -105,8 +109,6 @@ class JoinProfileFragment : Fragment() {
         if (result.resultCode == RESULT_OK) {
             val imageUri = result.data?.data ?: return@registerForActivityResult
             joinViewModel.setUserImageUri(imageUri)
-
-
         }
     } // End of registerForActivityResult
 

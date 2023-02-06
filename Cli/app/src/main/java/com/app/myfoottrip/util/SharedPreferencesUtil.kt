@@ -2,7 +2,6 @@ package com.app.myfoottrip.util
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.app.myfoottrip.data.dto.Token
 
 class SharedPreferencesUtil(context: Context) {
 
@@ -14,45 +13,57 @@ class SharedPreferencesUtil(context: Context) {
         const val COOKIES_KEY_NAME = "cookies"
         const val ACCESS_TOKEN = "access_token"
         const val REFRESH_TOKEN = "refresh_token"
+        const val FCM_TOKEN = "fcm_token"
+        const val LATITUDE = "latitude"
+        const val LONITUDE = "longitude"
     }
 
-    // 사용자의 토큰을 저장
-    fun addUserToken(userToken: Token) {
+    fun addUserRefreshToken(refresh_token: String) {
         val editor = preferences.edit()
-        editor.putString(ACCESS_TOKEN, userToken.access_token)
-        editor.putString(REFRESH_TOKEN, userToken.refresh_token)
+        editor.putString(REFRESH_TOKEN, refresh_token)
         editor.apply()
-    } // End of addUserToken
+    } // End of addUserRefreshToken
 
-    fun getUserToken(): Token {
-        val accessToken = preferences.getString(ACCESS_TOKEN, "")
-        val refreshToken = preferences.getString(REFRESH_TOKEN, "")
+    fun getUserRefreshToken(): String {
+        return preferences.getString(REFRESH_TOKEN, "").toString()
+    } // End of getUserRefreshToken
 
-        if (refreshToken != "") {
-            return Token(accessToken!!, refreshToken!!)
-        } else {
-            return Token("", "")
-        }
-    } // End of getUserToken
-
-    fun deleteUser() {
+    fun addUserAccessToken(access_token: String) {
         val editor = preferences.edit()
-        editor.clear()
+        val temp = "Bearer $access_token"
+        editor.putString(ACCESS_TOKEN, temp)
         editor.apply()
-    } // End of deleteUser
+    }
 
-    fun addUserCookie(cookies: HashSet<String>) {
-        val editor = preferences.edit()
-        editor.clear()
-        editor.apply()
-    } // End of addUserCookie
+    fun getUserAccessToken(): String {
+        return preferences.getString(ACCESS_TOKEN, "").toString()
+    } // End of getUserAccessToken
 
-    fun getUserCookie(): MutableSet<String>? {
-        return preferences.getStringSet(COOKIES_KEY_NAME, HashSet())
-    } // End of getUserCookie
+    fun deleteAccessToken(){
+        preferences.edit().remove(ACCESS_TOKEN).apply()
+    }
+
+    fun deleteRefreshToken(){
+        preferences.edit().remove(REFRESH_TOKEN).apply()
+    }
+
+//    fun deleteRefreshToken() {
+//        val editor = preferences.edit()
+//        editor.clear()
+//        editor.apply()
+//    } // End of deleteRefreshToken
 
     fun deleteUserCookie() {
         preferences.edit().remove(COOKIES_KEY_NAME).apply()
     } // End of deleteUserCookie
 
+    fun addFcmToken(fcmToken: String){
+        val editor = preferences.edit()
+        editor.putString(FCM_TOKEN, fcmToken)
+        editor.apply()
+    }
+
+    fun getFcmToken(): String{
+        return preferences.getString(FCM_TOKEN,"").toString()
+    }
 } // End of SharedPreferencesUtil class

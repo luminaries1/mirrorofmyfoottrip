@@ -1,4 +1,4 @@
-package com.app.myfoottrip.data.model.viewmodel
+package com.app.myfoottrip.data.viewmodel
 
 
 import android.net.Uri
@@ -9,13 +9,11 @@ import androidx.lifecycle.viewModelScope
 import com.app.myfoottrip.data.dto.Email
 import com.app.myfoottrip.data.dto.Join
 import com.app.myfoottrip.data.dto.Token
-import com.app.myfoottrip.data.dto.User
 import com.app.myfoottrip.data.repository.UserRepository
 import com.app.myfoottrip.util.NetworkResult
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 
@@ -23,11 +21,6 @@ private const val TAG = "싸피"
 
 class JoinViewModel : ViewModel() {
     private val userRepository = UserRepository()
-
-    // 휴대폰 인증 상태 체크 LiveData
-    private val _phoneNumberValidation = MutableLiveData<Boolean>()
-    val phoneNumberValidation: LiveData<Boolean>
-        get() = _phoneNumberValidation
 
     // 나이 상태 체크
     private val _ageState =
@@ -40,23 +33,10 @@ class JoinViewModel : ViewModel() {
     val isAllCheckedCount: LiveData<Int>
         get() = _isAllCheckedCount
 
-    // 이메일 체크 상태
-    private val _emailCheckSuccess = MutableLiveData(false)
-    val emailCheckSuccess: LiveData<Boolean>
-        get() = _emailCheckSuccess
-
     // 회원가입 하면서 생성되는 전체 유저 정보 LiveData
     private val _wholeJoinUserData = Join("", "")
     val wholeJoinUserData: Join
         get() = _wholeJoinUserData
-
-    private val _joinResponseStatus = MutableLiveData(false)
-    val joinResponseStatus: LiveData<Boolean>
-        get() = _joinResponseStatus
-
-    private val _joinSuccessUserData = MutableLiveData<User>()
-    val joinSuccessUserData: LiveData<User>
-        get() = _joinSuccessUserData
 
 
     // 이메일 중복 체크 변경 테스트 LiveData
@@ -72,7 +52,7 @@ class JoinViewModel : ViewModel() {
     val originPassword: LiveData<String>
         get() = _originPassword
 
-    // 확인 비밀번호
+    // 확인 비밀번호1
     private val _confirmPassword = MutableLiveData<String>()
     val confirmPassword: LiveData<String>
         get() = _confirmPassword
@@ -115,13 +95,12 @@ class JoinViewModel : ViewModel() {
 
         viewModelScope.launch {
             userRepository.userJoin(
-                _userProfileImageMultipartBody.value!!,
-                requestHashMap
+                _userProfileImageMultipartBody.value, requestHashMap
             )
         }
     } // End of userJoin
 
-    // 이메일 인증 문자 체크
+    // 이메일 인증 문자 체크1
     fun emailValidateCheck(emailValidateData: Email) {
         viewModelScope.launch {
             userRepository.checkEmailValidateText(emailValidateData)
@@ -140,7 +119,6 @@ class JoinViewModel : ViewModel() {
         tempList[index] = true
         _ageState.value = tempList
     } // End of changeAgeState
-
 
     fun setUserImageUri(imageUri: Uri) {
         _userProfileImage.value = imageUri

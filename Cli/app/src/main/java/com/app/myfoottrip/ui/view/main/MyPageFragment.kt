@@ -1,108 +1,114 @@
 package com.app.myfoottrip.ui.view.main
 
-import android.app.Activity
-import android.net.Uri
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.util.Log
-import androidx.fragment.app.Fragment
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.core.content.ContextCompat
+import androidx.core.view.setPadding
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import com.app.myfoottrip.R
-import com.app.myfoottrip.data.dto.Board
-import com.app.myfoottrip.data.viewmodel.BoardViewModel
+import com.app.myfoottrip.data.dto.User
+import com.app.myfoottrip.data.viewmodel.TokenViewModel
+import com.app.myfoottrip.data.viewmodel.UserViewModel
 import com.app.myfoottrip.databinding.FragmentMyPageBinding
 import com.app.myfoottrip.ui.base.BaseFragment
-import com.app.myfoottrip.util.GalleryUtils
 import com.app.myfoottrip.util.NetworkResult
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.util.*
-import kotlin.collections.ArrayList
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import kotlinx.coroutines.*
 
 private const val TAG = "MyPageFragment_마이풋트립"
+
 class MyPageFragment : BaseFragment<FragmentMyPageBinding>(
     FragmentMyPageBinding::bind, R.layout.fragment_my_page
 ) {
 
-    private var imageList = ArrayList<Uri>()
-    private val boardViewModel by activityViewModels<BoardViewModel>()
-
-    //-----
-    private val imageLauncher = registerForActivityResult( //갤러리에서 선택하면 불러올 launcher
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            Log.d(TAG, "data: ${result} ")
-            val imageUri: Uri? = result.data?.data //가져온 이미지의 uri
-            Log.d(TAG, "uri : $imageUri")
-            if (imageUri != null) { //이미지 가져오기 성공
-                imageList.add(imageUri)
-//                imageAdapter.apply { //recyclerview에 추가
-//                    ImageList.add(imageUri)
-//                    notifyItemInserted(ImageList.size - 1)
-//                    Log.d(TAG, "images : ${ImageList.size}")
-//                    binding.rvImages.visibility = View.VISIBLE
-//                }
-            }
-        }
-    }
+    private val tokenViewModel by activityViewModels<TokenViewModel>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        init()
+
         binding.apply {
-            loadBtn.setOnClickListener {
-                GalleryUtils.getGallery(requireContext(),imageLauncher)
+            // 내 여정 페이지로 이동
+            cvMyTravel.setOnClickListener {
+                findNavController().navigate(R.id.action_mainFragment_to_myTravelFragment)
             }
-
-            saveBtn.setOnClickListener {
-                val board = Board(9999,1,"테스트계정","string", Date(System.currentTimeMillis()),"혼자놀기","임시제목입니다"
-                    ,"임시 내용입니다.", arrayListOf(), null,2,2)
-
-                CoroutineScope(Dispatchers.IO).launch {
-                    withContext(Dispatchers.IO){
-                        val urlList : ArrayList<String> = imageList.mapIndexed{ i, it ->
-                            "IMAGE_${board.boardId}_${i}.png"
-                        } as ArrayList<String>
-                        board.imageList = GalleryUtils.insertImage(urlList,imageList,0)
-                        Log.d(TAG, "이미지 저장 성공")
-                    }
-                    createBoard(board)
-
-                    CoroutineScope(Dispatchers.Main).launch {
-                        createBoardObserver()
-                    }
-                }
+            // 개인정보수정 페이지로 이동
+            llToEditAccount.setOnClickListener{
+                findNavController().navigate(R.id.action_mainFragment_to_editAccountFragment)
+            }
+            // 내가 작성한 게시글 목록 페이지로 이동
+            clWrite.setOnClickListener {
+                findNavController().navigate(R.id.action_mainFragment_to_myWriteFragment)
+            }
+            // 내가 좋아요한 게시글 목록 페이지로 이동
+            clMoveLike.setOnClickListener {
+                findNavController().navigate(R.id.action_mainFragment_to_myLikeFragment)
             }
         }
     }
 
-    // ----------------Retrofit------------------
-    //게시물 전체 받아오기
-    private fun createBoard(board : Board){
+    override fun onResume() {
+        super.onResume()
+        init()
+    }
+
+    private fun init(){
+        binding.ivILikedImage.setMaxProgress(0.6f) //좋아요 애니메이션 세팅
+        getAccessTokenByRefreshTokenResponseLiveDataObserver()
+        getUserMyData()
+    }
+
+
+    //유저정보 데이터 초기화
+    private fun initUser(user: User){
+        binding.apply {
+            //프로필 이미지
+            if (user.join.profile_image.isNullOrEmpty()){
+                ivProfile.setPadding(30)
+                Glide.with(this@MyPageFragment).load(R.drawable.ic_my).fitCenter().into(ivProfile)
+                cvProfileLayout.setCardBackgroundColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(),R.color.white)))
+            }else {
+                Glide.with(this@MyPageFragment).load(user.join.profile_image).skipMemoryCache(true).diskCacheStrategy(DiskCacheStrategy.NONE).thumbnail(Glide.with(this@MyPageFragment).load(R.drawable.loading_image).centerCrop()).centerCrop().into(ivProfile)
+                cvProfileLayout.setCardBackgroundColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(),R.color.white)))
+            }
+            textView.text = "${user.join.nickname}님" //닉네임
+            tvMyTravelCnt.text = "${user.travel.size}개" //현재 작성하고 있는 여정의 수
+            tvIWroteCnt.text = "${user.writeBoard.size}개" //내가 작성한 게시글 수
+            tvILikedCnt.text = "${user.myLikeBoard.size}개" //좋아요 한 게시글 수
+        }
+    }
+
+    private fun getUserMyData() {
         CoroutineScope(Dispatchers.IO).launch {
-            boardViewModel.createBoard(board)
+            tokenViewModel.getUserData()
         }
-    }
+    } // End of getUserMyData
 
-    private fun createBoardObserver() {
-        boardViewModel.isCreated.observe(viewLifecycleOwner) {
+    private fun getAccessTokenByRefreshTokenResponseLiveDataObserver() {
+        tokenViewModel.getUserResponseLiveData.observe(viewLifecycleOwner) {
             when (it) {
                 is NetworkResult.Success -> {
-                    Log.d(TAG, "createBoardObserver: ${it.data}")
+                        initUser(it.data!!)
+//                        userViewModel.setWholeMyData(it.data!!)
                 }
                 is NetworkResult.Error -> {
-                    Log.d(TAG, "게시물 조회 Error: ${it.data}")
+                    // AccessToken을 통해서 유저 정보를 가져오기 실패했는지 파악해야됨.
+                    Log.d(TAG, "getAccessTokenByRefreshTokenResponseLiveDataObserver: 토큰 만료됨")
+                    // RefreshToken을 통해서 AccessToken을 재발급
+                    Log.d(TAG, "getAccessTokenByRefreshTokenResponseLiveDataObserver: ${it.data}")
+                    Log.d(TAG, "getAccessTokenByRefreshTokenResponseLiveDataObserver: ${it.message}")
                 }
                 is NetworkResult.Loading -> {
-
+                    Log.d(TAG, "getAccessTokenByRefreshTokenResponseLiveDataObserver: 로딩 중입니다")
                 }
             }
         }
-    } // 게시물 전체 받아오기
+    } // End of getAccessTokenByRefreshTokenResponseLiveDataObserver
+
 }

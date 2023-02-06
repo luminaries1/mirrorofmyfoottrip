@@ -11,12 +11,14 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.Navigation
+import androidx.navigation.fragment.findNavController
 import com.app.myfoottrip.R
-import com.app.myfoottrip.data.model.viewmodel.JoinViewModel
+import com.app.myfoottrip.data.viewmodel.JoinViewModel
+import com.app.myfoottrip.data.viewmodel.NavigationViewModel
 import com.app.myfoottrip.databinding.FragmentServiceClauseBinding
 
 
-private const val TAG = "싸피"
+private const val TAG = "ServiceClauseFragment_싸피"
 
 class ServiceClauseFragment : Fragment() {
     private lateinit var mContext: Context
@@ -25,6 +27,8 @@ class ServiceClauseFragment : Fragment() {
     private val joinViewModel by activityViewModels<JoinViewModel>()
     private lateinit var callback: OnBackPressedCallback
 
+    private val navigationViewModel by activityViewModels<NavigationViewModel>()
+
     override fun onAttach(context: Context) {
         super.onAttach(context)
         mContext = context
@@ -32,8 +36,11 @@ class ServiceClauseFragment : Fragment() {
         callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 Log.d(TAG, "handleOnBackPressed: ")
+                navigationViewModel.startPage = 1
+                findNavController().popBackStack()
             }
         }
+        requireActivity().onBackPressedDispatcher.addCallback(this, callback)
     } // End of onAttach
 
     override fun onCreateView(
@@ -78,7 +85,9 @@ class ServiceClauseFragment : Fragment() {
 
         joinBackButtonCustomView.findViewById<AppCompatButton>(R.id.custom_back_button_appcompatbutton)
             .setOnClickListener {
-                Log.d(TAG, "onViewCreated: onBackPressed Test 입니다.")
+                Log.d(TAG, "joinBackButtonCustomView onClick: ")
+                navigationViewModel.startPage = 1
+                findNavController().popBackStack()
             }
 
     } // End of onViewCreated

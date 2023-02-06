@@ -1,87 +1,166 @@
 package com.app.myfoottrip.ui.view.travel
 
+import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.PointF
 import android.os.Bundle
 import android.util.Log
-import android.view.MotionEvent
+import android.view.LayoutInflater
 import android.view.View
-import android.view.View.OnTouchListener
+import android.view.ViewGroup
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.app.myfoottrip.R
+import com.app.myfoottrip.data.dao.VisitPlaceRepository
+import com.app.myfoottrip.data.dto.VisitPlace
+import com.app.myfoottrip.data.viewmodel.TravelActivityViewModel
+import com.app.myfoottrip.data.viewmodel.TravelViewModel
 import com.app.myfoottrip.databinding.FragmentTravelLocationSelectBinding
 import com.app.myfoottrip.ui.adapter.CategoryAdatper
-import com.app.myfoottrip.ui.base.BaseFragment
 import com.app.myfoottrip.ui.view.main.HomeFragment
+import com.app.myfoottrip.ui.view.main.MainActivity
 import com.app.myfoottrip.util.LocationConstants
+import com.app.myfoottrip.util.NetworkResult
+import com.app.myfoottrip.util.showToastMessage
 import com.google.android.material.chip.Chip
 import com.naver.maps.geometry.LatLng
-import com.naver.maps.map.CameraUpdate
-import com.naver.maps.map.LocationTrackingMode
-import com.naver.maps.map.MapFragment
-import com.naver.maps.map.NaverMap
-import com.naver.maps.map.OnMapReadyCallback
+import com.naver.maps.map.*
 import com.naver.maps.map.util.FusedLocationSource
+import kotlinx.coroutines.*
 
-class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBinding>(
-    FragmentTravelLocationSelectBinding::bind, R.layout.fragment_travel_location_select
-), OnMapReadyCallback {
+private const val TAG = "TravelLocationSelectFragment_싸피"
+
+class TravelLocationSelectFragment : Fragment(), OnMapReadyCallback {
+    // ViewModel
+    private val travelViewModel by viewModels<TravelViewModel>()
+
+    // ActivityViewModel
+    private val travelActivityViewModel by activityViewModels<TravelActivityViewModel>()
+
     private lateinit var categoryAdapter: CategoryAdatper
-    private var locationList : ArrayList<String> = arrayListOf() //지역 리스트
-    private var selectedList : ArrayList<String> = arrayListOf() //선택된 리스트
+    private var locationList: MutableList<String> = ArrayList() //지역 리스트
+    private var selectedList: MutableList<String> = ArrayList() //선택된 리스트
 
-    private val LOCATION_PERMISSION_REQUEST_CODE = 1000
     private var mapFragment: MapFragment = MapFragment()
     private lateinit var naverMap: NaverMap //map에 들어가는 navermap
-    private lateinit var locationSource : FusedLocationSource
+    private lateinit var locationSource: FusedLocationSource
+    private lateinit var mContext: Context
+    lateinit var visitPlaceRepository: VisitPlaceRepository
+
+    private var selectedTravelId = 0
+    private lateinit var binding: FragmentTravelLocationSelectBinding
+
+    // 타입이 0이면 여행 정보 새로 생성, 타입이 2이면 기존의 여행 정보를 불러오기.
+    private var fragmentType = 0
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        mContext = context
+    } // End of onAttach
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        visitPlaceRepository = VisitPlaceRepository.get()
+    } // End of onCreate
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
+        binding = FragmentTravelLocationSelectBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        //서비스 연결
-        LocationConstants.serviceBind(requireContext())
+
+        // 타입이 0이면 여행 정보 새로 생성, 타입이 2이면 기존의 여행 정보를 불러오기.
+        fragmentType = requireArguments().getInt("type")
+
+        // 다시 null 값으로 초기화
+        getUserTravelDataResponseLiveDataObserve()
 
         binding.fabStart.apply {
-            backgroundTintList = AppCompatResources.getColorStateList(requireContext(), R.color.gray_500)
+            backgroundTintList =
+                AppCompatResources.getColorStateList(requireContext(), R.color.gray_500)
             isEnabled = false
         }
 
-        LocationConstants.getLocationPermission {
-            initMap()
-        }
-        initAdapter()
-        initListener()
-    }
+//        LocationConstants.getLocationPermission {
+//            initMap()
+//        }
 
-    private fun initMap(){
-        Log.d(TAG, "initMap: ")
-        // TouchFrameLayout 에 mapFragment 올려놓기
+        if (fragmentType == 2) {
+            selectedTravelId = requireArguments().getInt("travelId")
+            Log.d(TAG, "onViewCreated: 수정 작업 입니다.")
+
+            getUserTravelData()
+            // 기존의 수정해야 할 유저데이터를 가져오고 나서, UI가 보여야됨
+        } else {
+            // Adapter 초기화
+            initAdapter()
+
+            // EventListener 초기화
+            initListener()
+        }
+    } // End of onViewCreated
+
+    private fun getUserTravelData() {
+        CoroutineScope(Dispatchers.IO).launch {
+            travelViewModel.getUserTravelData(selectedTravelId)
+        }
+    } // End of getUserTravelData
+
+    private fun saveRoomDB() = CoroutineScope(Dispatchers.IO).launch {
+        val size = travelActivityViewModel.userTravelData.value!!.placeList!!.size
+        for (i in 0 until size) {
+            val place = travelActivityViewModel.userTravelData.value!!.placeList!![i]
+
+            val temp = VisitPlace(
+                i,
+                place.address!!,
+                place.latitude!!,
+                place.longitude!!,
+                place.saveDate!!.time,
+                place.placeImgList!!
+            )
+            visitPlaceRepository.insertVisitPlace(temp)
+        }
+
+    } // End of saveRoomDB
+
+    private fun initMap() {
+        // TouchFrameLayout에 mapFragment 올려놓기
         val fragmentTransaction = childFragmentManager.beginTransaction()
-        if(mapFragment.isAdded){
-            fragmentTransaction.remove( mapFragment )
+        if (mapFragment.isAdded) {
+            fragmentTransaction.remove(mapFragment)
             mapFragment = MapFragment()
         }
         fragmentTransaction.add(R.id.map_fragment, mapFragment).commit()
         mapFragment.getMapAsync(this)
-    }
+    } // End of initMap
 
-    private fun initAdapter(){
-        locationList.clear()
-        selectedList.clear()
-        locationList.addAll(HomeFragment.locationList)
+    private fun initAdapter() {
+        locationList.addAll(HomeFragment.LOCATION_LIST)
         categoryAdapter = CategoryAdatper(locationList)
 
+        // categoryAdapter에서 아이템 클릭했을 경우 이벤트처리
         categoryAdapter.setItemClickListener(object : CategoryAdatper.ItemClickListener {
-            override fun onClick(view: View, position: Int) {
+            override fun onClick(view: View, position: Int, category: String) {
                 if (!selectedList.contains(locationList[position])) {
                     setChipListener(position)
                 }
-                if(selectedList.isNotEmpty()){
+                if (selectedList.isNotEmpty()) {
                     binding.tvLocationHint.visibility = View.GONE
                     binding.fabStart.apply {
-                        backgroundTintList = AppCompatResources.getColorStateList(requireContext(), R.color.main)
+                        backgroundTintList =
+                            AppCompatResources.getColorStateList(requireContext(), R.color.main)
                         isEnabled = true
+                        isClickable = true
                     }
                 }
             }
@@ -90,17 +169,33 @@ class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBi
         binding.rvCategory.apply {
             adapter = categoryAdapter
         }
+    } // End of initAdapter
 
-    }
+    // 위치 기록 시작
+    private fun startLocationRecording() {
+        binding.fabStart.setOnClickListener {
+            travelActivityViewModel.setLocationList(selectedList as ArrayList<String>)
 
-    private fun initListener(){
-        binding.apply {
-            fabStart.setOnClickListener {
-                //위치 기록 시작
-                LocationConstants.startBackgroundService(requireContext())
-                showToast("위치 기록을 시작합니다.", ToastType.SUCCESS)
-                findNavController().navigate(R.id.action_travelLocationSelectFragment_to_travelLocationWriteFragment)
+            val mainActivity = requireActivity() as MainActivity
+
+            CoroutineScope(Dispatchers.IO).launch {
+                mainActivity.startLocationBackground()
             }
+
+            mContext.showToastMessage("위치 기록을 시작합니다.")
+
+            val bundle = bundleOf(
+                "type" to fragmentType
+            )
+            findNavController().navigate(
+                R.id.action_travelLocationSelectFragment_to_travelLocationWriteFragment,
+                bundle
+            )
+        }
+    } // End of startLocationRecording
+
+    private fun initListener() {
+        binding.apply {
             ivLocationDrop.setOnClickListener {
                 setRotaionAnimation()
             }
@@ -108,15 +203,20 @@ class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBi
                 setRotaionAnimation()
             }
             ivBack.setOnClickListener {
+                travelViewModel
                 findNavController().popBackStack()
             }
 //            btnEnd.setOnClickListener{
 //                LocationConstants.stopLocation()
 //            }
-        }
-    }
 
-    private fun setChipListener(position : Int){
+            startLocationRecording()
+        }
+    } // End of initListener
+
+    private fun setChipListener(position: Int) {
+//        locationList = ArrayList() //지역 리스트
+//        selectedList = ArrayList() //선택된 리스트
         selectedList.add(locationList[position])
 
         binding.cgDetail.addView(Chip(requireContext()).apply {
@@ -125,53 +225,121 @@ class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBi
             textSize = 12.0f
             isCloseIconVisible = true
             closeIcon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_close)
-            closeIconTint = ColorStateList.valueOf(ContextCompat.getColor(requireContext(),R.color.white))
-            chipBackgroundColor = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.main))
-            setTextColor(ColorStateList.valueOf(ContextCompat.getColor(requireContext(),R.color.white)))
+            closeIconTint =
+                ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.white))
+            chipBackgroundColor =
+                ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.main))
+            setTextColor(
+                ColorStateList.valueOf(
+                    ContextCompat.getColor(
+                        requireContext(), R.color.white
+                    )
+                )
+            )
 
+            // closeIcon 클릭시 이벤트
             setOnCloseIconClickListener {
                 binding.cgDetail.removeView(this)
+                // element를 기준으로 삭제
                 selectedList.remove(locationList[position])
-                if(selectedList.isEmpty()){
+
+                if (selectedList.isEmpty()) {
                     binding.tvLocationHint.visibility = View.VISIBLE
                     binding.fabStart.apply {
-                        backgroundTintList = AppCompatResources.getColorStateList(requireContext(), R.color.gray_500)
+                        backgroundTintList =
+                            AppCompatResources.getColorStateList(requireContext(), R.color.gray_500)
                         isEnabled = false
+                        isClickable = false
                     }
                 }
             }
         })
-    }
+    } // End of setChipListener
 
-    override fun onMapReady(p0: NaverMap) {
-        Log.d(TAG, "onMapReady: ")
-        this.naverMap = p0
+    private fun getUserTravelDataResponseLiveDataObserve() {
+        travelViewModel.getUserTravelDataResponseLiveData.observe(viewLifecycleOwner) {
+            when (it) {
+                is NetworkResult.Success -> {
+                    travelActivityViewModel.setGetUserTravelData(it.data!!)
+
+                    Log.d(TAG, "getUserTravelDataResponseLiveDataObserve: 데이터 잘 가져와 지나?")
+                    Log.d(TAG, "getUserTravelDataResponseLiveDataObserve: ${it.data}")
+                    Log.d(TAG, "getUserTravelDataResponseLiveDataObserve: ${travelActivityViewModel.userTravelData.value}")
+
+                    locationList = ArrayList()
+                    selectedList = ArrayList()
+
+                    // 수정해야할 데이터를 RoomDB에 저장.
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val deffered: Deferred<Int> = async {
+                            saveRoomDB()
+                            1
+                        }
+
+                        deffered.await()
+                    }
+
+                    // Adapter 초기화
+                    initAdapter()
+
+                    // EventListener 초기화
+                    initListener()
+
+                    val size = travelActivityViewModel.userTravelData.value!!.location!!.size
+                    for (i in 0 until size) {
+                        setChipListener(locationList.indexOf(travelActivityViewModel.userTravelData.value!!.location!![i]))
+                    }
+
+                    if (selectedList.isNotEmpty()) {
+                        binding.tvLocationHint.visibility = View.GONE
+                        binding.fabStart.apply {
+                            backgroundTintList =
+                                AppCompatResources.getColorStateList(requireContext(), R.color.main)
+                            isEnabled = true
+                            isClickable = true
+                        }
+                    }
+                }
+                is NetworkResult.Error -> {
+                    Log.d(TAG, "유저 데이터 가져오기 실패")
+                }
+                is NetworkResult.Loading -> {
+                    Log.d(TAG, "getUserTravelDataResponseLiveDataObserve: 로딩 중")
+                }
+            }
+        }
+    } // End of getUserTravelDataResponseLiveDataObserve
+
+
+    override fun onMapReady(naverMap: NaverMap) {
+        this.naverMap = naverMap
         val uiSetting = naverMap.uiSettings
         uiSetting.isLocationButtonEnabled = true
 
         naverMap.locationTrackingMode = LocationTrackingMode.Follow
 
-        locationSource = FusedLocationSource(this,LOCATION_PERMISSION_REQUEST_CODE)
+        locationSource = FusedLocationSource(this, LOCATION_PERMISSION_REQUEST_CODE)
         naverMap.locationSource = locationSource
 
-        if(locationSource.lastLocation != null){
+        if (locationSource.lastLocation != null) {
             val cameraUpdate = CameraUpdate.scrollTo(
-                LatLng(locationSource.lastLocation!!.latitude, locationSource.lastLocation!!.longitude)
+                LatLng(
+                    locationSource.lastLocation!!.latitude, locationSource.lastLocation!!.longitude
+                )
             )
             naverMap.moveCamera(cameraUpdate)
         }
 
-        naverMap.onMapClickListener = object : NaverMap.OnMapClickListener{
+        naverMap.onMapClickListener = object : NaverMap.OnMapClickListener {
             override fun onMapClick(p0: PointF, p1: LatLng) {
-                Log.d(TAG, "onTouch: ")
-                if(binding.rvCategory.visibility == View.VISIBLE){
+                if (binding.rvCategory.visibility == View.VISIBLE) {
                     binding.rvCategory.visibility = View.GONE
                 }
             }
         }
-    }
+    } // End of onMapReady
 
-    private fun setRotaionAnimation(){
+    private fun setRotaionAnimation() {
         binding.apply {
             if (rvCategory.visibility == View.VISIBLE) {
                 rvCategory.visibility = View.GONE
@@ -181,7 +349,7 @@ class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBi
                 ivLocationDrop.animate().setDuration(200).rotation(180f)
             }
         }
-    }
+    } // End of setRotaionAnimation
 
     override fun onStart() {
         super.onStart()
@@ -205,7 +373,6 @@ class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBi
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d(TAG, "onDestroy: ")
         LocationConstants.serviceUnBind(requireContext())
     }
 
@@ -214,4 +381,8 @@ class TravelLocationSelectFragment : BaseFragment<FragmentTravelLocationSelectBi
         binding.mapFragment.onLowMemory()
     }
 
-}
+    private companion object {
+        const val LOCATION_PERMISSION_REQUEST_CODE = 1000
+    }
+
+} // End of TravelLocationSelectFragment class

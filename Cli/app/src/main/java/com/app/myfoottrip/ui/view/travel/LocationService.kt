@@ -1,131 +1,97 @@
 package com.app.myfoottrip.ui.view.travel
 
-import android.Manifest
-import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.location.LocationManager
-import android.os.Binder
-import android.os.Build
 import android.os.IBinder
-import android.os.Looper
-import android.util.Log
-import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import com.app.myfoottrip.data.dto.Location
-import com.app.myfoottrip.data.repository.AppDatabase
-import com.google.android.gms.location.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import com.app.myfoottrip.R
-import com.app.myfoottrip.util.LocationConstants
-import com.app.myfoottrip.util.TimeUtils
-import java.lang.Math.abs
+import com.app.myfoottrip.data.dao.VisitPlaceRepository
+import com.app.myfoottrip.data.dto.Coordinates
+import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
-const val TAG = "areum_Service"
+private const val TAG = "CoordinatesService_싸피"
+
 class LocationService : Service() {
-    val binder = MyServiceBinder()
+    private val serviceScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO
+    )
+    private lateinit var locationClient: LocationClient
+    lateinit var visitPlaceRepository: VisitPlaceRepository
 
-    override fun onBind(intent: Intent): IBinder {
-        Log.d(TAG, "onBind: DB 세팅 완료=====")
-        return binder
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 
-    private var mLocationCallback = object : LocationCallback(){ //위치 받아서 저장하는 코드
-        override fun onLocationResult(locationResult: LocationResult) {
-            super.onLocationResult(locationResult)
-            if(locationResult != null && locationResult.lastLocation != null){
-                var latitude = locationResult.lastLocation.latitude
-                var longitude = locationResult.lastLocation.longitude
-                var time = System.currentTimeMillis()
-                Log.d("areum", "위도 : ${latitude}, 경도 : ${longitude}, 시간 : ${TimeUtils.getDateTimeString(time)}")
-
-                CoroutineScope(Dispatchers.IO).launch {
-                    AppDatabase.getInstance(applicationContext).locationDao().apply {
-                        val location : Location? = getLastOne()
-                        if(location != null){
-                            var diff = abs(latitude - location.lat)
-                            diff += abs(longitude - location.lng)
-                            if(diff < 0.0005){
-                                Log.d(TAG, "onLocationResult: 동일한 거리")
-                                return@apply
-                            }
-                        }
-                        insertLocation( Location(null, null, latitude, longitude, time,"주소") ) //TODO :
-                        val count = getCount()
-                        Log.d(TAG, "DB에 들어감 COUNT : $count")
-                    }
-                }
-            }
-        }
-    }
-
-
-
-    fun startLocationService(){ //위치 저장 시작
-        var channelId = "location_notification_channel"
-        var notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val resultIntent = Intent()
-        val pendingIntent = PendingIntent.getActivity(this, 0, resultIntent, PendingIntent.FLAG_IMMUTABLE)
-        val builder = NotificationCompat.Builder(applicationContext,channelId)
-        builder.apply {
-            setSmallIcon(R.mipmap.ic_launcher)
-            setContentTitle("My Foot Trip")
-            setDefaults(NotificationCompat.DEFAULT_ALL)
-            setContentText("위치 기록중...")
-            setContentIntent(pendingIntent)
-            setAutoCancel(false)
-            setPriority(NotificationCompat.PRIORITY_MAX)
-        }
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
-            if(notificationManager != null && notificationManager.getNotificationChannel(channelId) == null){
-                val notificationChannel = NotificationChannel(channelId,"My Foot Trip", NotificationManager.IMPORTANCE_HIGH)
-                notificationChannel.description = "This channel is used by location service"
-                notificationManager.createNotificationChannel(notificationChannel)
-            }
-        }
-
-        val locationRequest = LocationRequest.create()
-        locationRequest.apply { //위치 받아오는 interval 설정
-            setInterval(1_000 * 60 * 15) //15분
-            setFastestInterval(1_000 * 60 * 15) //15분
-            setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
-        }
-
-        //권한 확인
-        val hasFineLocationPermission = ActivityCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
+    override fun onCreate() {
+        super.onCreate()
+        locationClient = DefaultLocationClient(
+            applicationContext, LocationServices.getFusedLocationProviderClient(applicationContext)
         )
-        val hasCoraseLocation = ActivityCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-        if (hasFineLocationPermission != PackageManager.PERMISSION_GRANTED && hasCoraseLocation != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        //위치 받아오기 시작
-        LocationServices.getFusedLocationProviderClient(this)
-            .requestLocationUpdates(locationRequest,mLocationCallback, Looper.getMainLooper())
-        startForeground(LocationConstants.LOCATION_SERVICE_ID, builder.build())
+        visitPlaceRepository = VisitPlaceRepository.get()
     }
 
-    fun stopLocationService(){ //위치 받아오기 종료
-        LocationServices.getFusedLocationProviderClient(this)
-            .removeLocationUpdates(mLocationCallback)
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_START -> start()
+            ACTION_STOP -> stop()
+        }
+
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun start() {
+        val notification =
+            NotificationCompat.Builder(this, "location").setContentTitle("Tracking location...")
+                .setContentText("Location: null").setSmallIcon(R.drawable.ic_launcher_background)
+                .setOngoing(true)
+
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        locationClient.getLocationUpdates(1000L * 60L * 3L).catch { exception ->
+            exception.printStackTrace()
+        }.onEach { location ->
+            val lat = location.latitude.toString()
+            val lon = location.longitude.toString()
+            val updateNotification = notification.setContentText(
+                "위치를 측정 중.. $lat , $lon"
+            )
+
+            val intent = Intent("test")
+            intent.putExtra("test", Coordinates(location.latitude, location.longitude))
+            this.sendBroadcast(intent)
+
+            CoroutineScope(Dispatchers.IO).launch {
+                EventBus.post(Coordinates(location.latitude, location.longitude))
+            }
+
+            notificationManager.notify(1, updateNotification.build())
+        }
+            .launchIn(
+                serviceScope
+            )
+
+        startForeground(1, notification.build())
+    } // End of start
+
+    private fun stop() {
         stopForeground(true)
         stopSelf()
+    } // End of stop
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 
-    inner class MyServiceBinder : Binder(){
-        fun getService() : LocationService{
-            return this@LocationService
-        }
+    companion object {
+        const val ACTION_START = "ACTION_START"
+        const val ACTION_STOP = "ACTION_STOP"
     }
-}
+} // End of CoordinatesService class

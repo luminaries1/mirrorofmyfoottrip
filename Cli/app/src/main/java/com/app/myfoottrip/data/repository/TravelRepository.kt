@@ -7,62 +7,137 @@ import com.app.myfoottrip.Application
 import com.app.myfoottrip.data.dto.Travel
 import com.app.myfoottrip.network.api.TravelApi
 import com.app.myfoottrip.util.NetworkResult
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
-private const val TAG = "TravelRepository_areum"
+private const val TAG = "TravelRepository_싸피"
+
 class TravelRepository {
     private val travelApi = Application.retrofit.create(TravelApi::class.java)
 
-    private val _travelResponseLiveData = MutableLiveData<NetworkResult<Boolean>>()
-    val travelResponseLiveData: LiveData<NetworkResult<Boolean>>
-        get() = _travelResponseLiveData
+    // 헤더가 담긴
+    private val travelHeaderApi = Application.headerRetrofit.create(TravelApi::class.java)
 
-    //여정 조회
-    suspend fun getTravel(travelId : Int) : Travel?{
-        var result: Travel? = null
-        withContext(Dispatchers.IO){
-            try {
-                val response = travelApi.getTravel(travelId)
-                if(response.isSuccessful){
-                    result = response.body() as Travel
-                } else {
-                    Log.d(TAG, "getTravel: response 실패 ${response.errorBody().toString()}")
-                }
-            }catch (e : Exception){
-                Log.d(TAG, "getTravel: $e")
-            }
-        }
 
-        return result
-    }
+    //유저 여정 값
+    private val _travelListResponseLiveData = MutableLiveData<NetworkResult<ArrayList<Travel>>>()
+    val travelListResponseLiveData: LiveData<NetworkResult<ArrayList<Travel>>>
+        get() = _travelListResponseLiveData
 
-    //여정 생성
-    suspend fun sendTravel(travel: Travel){
-        val response = travelApi.makeTravel(travel)
+    // 여행 추가
+    private val _createTravelResponseLiveData = MutableLiveData<NetworkResult<Int>>()
+    val createTravelResponseLiveData: LiveData<NetworkResult<Int>>
+        get() = _createTravelResponseLiveData
 
-        _travelResponseLiveData.postValue(NetworkResult.Loading())
 
-        if (response.isSuccessful && response.body() != null) {
-            Log.d(TAG, "checkEmailValidateText: 여기로 들어가나요?")
-            _travelResponseLiveData.postValue(NetworkResult.Success(true))
+    // 여행 데이터 추가
+    suspend fun createTravel(travel: Travel) {
+        val response = travelHeaderApi.createTravel(travel)
+        _createTravelResponseLiveData.postValue(NetworkResult.Loading())
+
+        if (response.isSuccessful) {
+            _createTravelResponseLiveData.postValue(NetworkResult.Success(response.code()))
         } else if (response.errorBody() != null) {
-            _travelResponseLiveData.postValue(
+            _createTravelResponseLiveData.postValue(
                 NetworkResult.Error(
                     response.errorBody()!!.string()
                 )
             )
         } else {
-            _travelResponseLiveData.postValue(
+            _createTravelResponseLiveData.postValue(
                 NetworkResult.Error(
                     response.headers().toString()
                 )
             )
         }
-    }
+    } // End of createTravel
 
-    //여정 수정
-    suspend fun updateTravel(travel: Travel){
+    fun setCreateTravelResponseLiveData() {
+        _createTravelResponseLiveData.postValue(null)
+    } // End of setCreateTravelResponseLiveData
 
-    }
-}
+
+    // 각 유저별 여행 기록 정보를 가져옴
+    suspend fun getUserTravel(userId: Int) {
+        val response = travelApi.getUserTravel(userId)
+
+        // 처음은 Loading 상태로 지정
+        _travelListResponseLiveData.postValue(NetworkResult.Loading())
+
+        if (response.isSuccessful && response.body() != null) {
+            _travelListResponseLiveData.postValue(NetworkResult.Success(response.body()!!))
+        } else if (response.errorBody() != null) {
+            _travelListResponseLiveData.postValue(
+                NetworkResult.Error(
+                    response.errorBody()!!.string()
+                )
+            )
+        } else {
+            _travelListResponseLiveData.postValue(
+                NetworkResult.Error(
+                    response.headers().toString()
+                )
+            )
+        }
+    } // End of getUserTravel
+
+    // ======================== 유저 여행 데이터 조회 ========================
+    private val _getUserTravelDataResponseLiveData = MutableLiveData<NetworkResult<Travel>>()
+    val getUserTravelDataResponseLiveData: LiveData<NetworkResult<Travel>>
+        get() = _getUserTravelDataResponseLiveData
+
+    suspend fun getUserTravelData(travelId: Int) {
+        val response = travelHeaderApi.getTravel(travelId)
+
+        // 처음은 Loading 상태로 지정
+        _getUserTravelDataResponseLiveData.postValue(NetworkResult.Loading())
+
+        if (response.isSuccessful && response.body() != null) {
+            _getUserTravelDataResponseLiveData.postValue(NetworkResult.Success(response.body()!!))
+        } else if (response.errorBody() != null) {
+            _getUserTravelDataResponseLiveData.postValue(
+                NetworkResult.Error(
+                    response.errorBody()!!.string()
+                )
+            )
+        } else {
+            _getUserTravelDataResponseLiveData.postValue(
+                NetworkResult.Error(
+                    response.headers().toString()
+                )
+            )
+        }
+    } // End of getTravel
+
+
+    // ======================== 유저 여행 데이터 수정 ========================
+    private val _userTravelDataUpdateResponseLiveData = MutableLiveData<NetworkResult<Travel>>()
+    val userTravelDataUpdateResponseLiveData: LiveData<NetworkResult<Travel>>
+        get() = _userTravelDataUpdateResponseLiveData
+
+    suspend fun userTravelDataUpdate(travelId: Int, updateTravelData: Travel) {
+        val response = travelHeaderApi.updateTravel(travelId, updateTravelData)
+
+        Log.d(TAG, "userTravelDataUpdate: $response")
+        Log.d(TAG, "userTravelDataUpdate: ${response.body()}")
+        Log.d(TAG, "userTravelDataUpdate: ${response.message()}")
+
+        // 처음은 Loading 상태로 지정
+        _userTravelDataUpdateResponseLiveData.postValue(NetworkResult.Loading())
+
+        if (response.isSuccessful && response.body() != null) {
+            _userTravelDataUpdateResponseLiveData.postValue(NetworkResult.Success(response.body()!!))
+        } else if (response.errorBody() != null) {
+            _userTravelDataUpdateResponseLiveData.postValue(
+                NetworkResult.Error(
+                    response.errorBody()!!.string()
+                )
+            )
+        } else {
+            _userTravelDataUpdateResponseLiveData.postValue(
+                NetworkResult.Error(
+                    response.headers().toString()
+                )
+            )
+        }
+    } // End of userTravelDataUpdate
+
+} // End of TravelRepository class

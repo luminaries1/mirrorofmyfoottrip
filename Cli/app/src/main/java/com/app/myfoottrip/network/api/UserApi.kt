@@ -2,7 +2,7 @@ package com.app.myfoottrip.network.api
 
 import com.app.myfoottrip.data.dto.Email
 import com.app.myfoottrip.data.dto.Token
-import com.app.myfoottrip.data.dto.User
+import com.google.gson.JsonObject
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -20,7 +20,7 @@ interface UserApi {
     @Multipart
     @POST("registration/")
     suspend fun userJoin(
-        @Part profile_image: MultipartBody.Part,
+        @Part profile_image: MultipartBody.Part?,
         @PartMap join: HashMap<String, RequestBody>,
     ): Response<Token>
 
@@ -29,4 +29,11 @@ interface UserApi {
     suspend fun emailValidateCheck(
         @Body emailId: Email
     ): Response<Boolean>
-} // End of UserApi class
+
+    // 로그인
+    @POST("login/")
+    suspend fun userLogin(
+        @Body userLoginData: JsonObject
+    ): Response<Token>
+
+}// End of UserApi Interface
