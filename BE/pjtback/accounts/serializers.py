@@ -30,7 +30,7 @@ class CustomRegisterSerializer(RegisterSerializer):
     password = serializers.CharField(write_only=True, source="password1")
     phone_number = serializers.CharField(max_length=13, required=False)
     profileImg = serializers.ImageField(use_url=True, required=False)
-    naver_email = serializers.EmailField(required=False)
+    naver_email = serializers.EmailField(required=False, allow_null = True)
     kakao_email = serializers.EmailField(required=False)
     google_email = serializers.EmailField(required=False)
     nickname = serializers.CharField(min_length=1, required=True)
@@ -78,16 +78,23 @@ class CustomRegisterSerializer(RegisterSerializer):
 
 # 유저 디테일 시리얼라이저
 class CustomUserDetailSerializer(UserDetailsSerializer):
-    pw = serializers.CharField(source="password", read_only=True)
-    name = serializers.CharField(source="username", required=False)
-    age = serializers.CharField()
+    profile_image = serializers.ImageField(source='profileImg', use_url = True, required=False, allow_null = True)
     
-
     class Meta(UserDetailsSerializer.Meta):
-        fields = ('email', 'pw', 'name', 'nickname',
-                  'profileImg', 'age', 'kakao', 'naver', 'google',)
-        read_only_fields = ('email', 'pw',)
+        fields = ('email', 'password', 'username', 'nickname',
+                  'profile_image', 'age', 'kakao', 'naver', 'google',)
+        read_only_fields = ('email', 'password',)
+    @staticmethod
+    def validate_username(username):
+        return username
+    
+    def update(self,instance, validated_data):
+        if not validated_data.get('profileImg'):
+            validated_data['profileImg']= instance.profileImg 
 
+        super().update(instance, validated_data)
+        instance.save()
+        return instance
 
 class JoinSerializer(serializers.ModelSerializer):
     profile_image = serializers.ImageField(source='profileImg', use_url = True)
