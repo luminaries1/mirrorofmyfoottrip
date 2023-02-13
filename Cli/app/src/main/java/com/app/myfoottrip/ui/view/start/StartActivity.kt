@@ -2,11 +2,9 @@ package com.app.myfoottrip.ui.view.start
 
 import android.Manifest
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.app.myfoottrip.R
 import com.app.myfoottrip.data.viewmodel.NavigationViewModel
 import com.app.myfoottrip.databinding.ActivityStartBinding
 import com.app.myfoottrip.ui.view.dialogs.ServiceClauseCustomDialog

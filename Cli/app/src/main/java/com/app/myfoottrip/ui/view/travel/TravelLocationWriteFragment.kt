@@ -266,7 +266,7 @@ class TravelLocationWriteFragment : BaseFragment<FragmentTravelLocationWriteBind
         nowLocationSave()
     } // End of setButtonListener
 
-    //위치 기록 정지 및 저장
+    //위치 기록 정지 및
     private fun stopLocationRecordingAndSave() {
         // 저장 버튼 클릭시 이벤트
         binding.fabStop.setOnClickListener {

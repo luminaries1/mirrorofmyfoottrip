@@ -49,9 +49,6 @@ class LocationService : Service() {
     }
 
     private fun start() {
-        Log.d(TAG, "locationService : start")
-        
-        
         val notification =
             NotificationCompat.Builder(this, "location").setContentTitle("마이풋트립")
                 .setContentText("위치 정보를 수집 중").setSmallIcon(R.drawable.ic_notify_round_icon)
