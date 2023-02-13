@@ -114,9 +114,7 @@ class TravelSelectFragment : BaseFragment<FragmentTravelSelectBinding>(
 
         buttonSetTextObserve()
 
-        // 유저 생성 ResponseLiveData 다시 초기화
-        travelViewModel.setCreateTravelResponseLiveData()
-
+        travelViewModel.setCreateTravelResponseLiveData(null)
         travelAdapter.notifyDataSetChanged()
 
     } // End of onViewCreated

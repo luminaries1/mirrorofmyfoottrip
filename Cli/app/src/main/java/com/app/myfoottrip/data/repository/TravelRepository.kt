@@ -25,8 +25,8 @@ class TravelRepository {
         get() = _travelListResponseLiveData
 
 
-    fun setCreateTravelResponseLiveData() {
-        _createTravelResponseLiveData.postValue(null)
+    fun setCreateTravelResponseLiveData(newData: NetworkResult<Int>?) {
+        _createTravelResponseLiveData.value = newData
     } // End of setCreateTravelResponseLiveData
 
 
@@ -91,10 +91,6 @@ class TravelRepository {
         imageList: List<MultipartBody.Part?>,
         requestHashMap: HashMap<String, RequestBody>
     ) {
-        // Log.d(TAG, "createTravel: $travel")
-        // Log.d(TAG, "createTravel: ${travel.placeList?.get(0)!!.placeImgList?.get(0) is MultipartBody.Part} " )
-
-        Log.d(TAG, "createTravel: $imageList")
 
         imageList.forEach {
             Log.d(TAG, "createTravel: $it")
